@@ -34,10 +34,9 @@ int main(){
 	return 0;
 }
 
-
-
 void fcfs(){
-	int processes, totalTurnAroundT=0, totalBurstT=0;
+	int processes;
+	float totalBurstT=0, totalWaitingT=0;
 	
 	printf("\tHow many processes?: ");
 	scanf("%d", &processes);
@@ -64,34 +63,31 @@ void fcfs(){
 		}
 	}
 	
-	// printing the values, computing individual turnaroundT
-	int turnaroundT[processes];
+	// prints the values
 	for(int i = 0; i <= processes; i++){
-		static int sum = 0, row = 0;
+		static int sum = 0;
 		if(i == 0){
 			printf("\n\t\t%d", arr[0][0]);
 		}
 		else{
-			sum += arr[row][1];
-			
-			// completion time - arrival time
-			turnaroundT[row] = sum - arr[row][0];
-			
+			sum += arr[i-1][1];
 			printf("\t%d", sum);
-			row++;
+			
+			// gets totalBurstT
+			totalBurstT += (sum - arr[i-1][0]);
+			
+			//gets the totalWaitingT
+			if(i < processes){
+				totalWaitingT += sum;
+			}
 		}
 	}
 	
-	// finds total turn around and burst time
-	for(int i = 0; i < processes; i++){
-		totalTurnAroundT += turnaroundT[i];
-		totalBurstT += arr[i][1];
-	}
+	// printf("\n\ntotal waiting time: %f", totalWaitingT);
+	// printf("\n\ntotal burst time: %f", totalBurstT);
+	printf("\n\n\t ** Average Turn Around Time: %f **",((totalBurstT/processes)));
+	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/processes);
 	
-	// avg TAT = totalTAT/number of processes
-	// avg WT = (totalTAT - totalBT)/number of processes
-	printf("\n\n\t ** Average Turn Around Time: %d **",totalTurnAroundT/processes);
-	printf("\n\t ** Average Waiting Time: %d **",(totalTurnAroundT-totalBurstT)/processes);
 }
 
 void sortArray(int arr[][3], int rows) {
@@ -112,5 +108,6 @@ void sortArray(int arr[][3], int rows) {
         }
     }
 }
+
 
 
