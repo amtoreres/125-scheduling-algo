@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void fcfs();
-void sortArray(int[][3], int);		
+void fcfs(int [][3], int);
+void sjf(int [][3], int);
+void sortArray(int[][3], int, int);	
 
 int main(){
 	int input;
+	int processes;
 	
 	printf("\t----  Scheduling Algorithms ----\n");
 	printf("\t1. FCFS\n\t2. SJF\n\t3. Priority Based\n\t4. Round Robin\n\t5. Exit\n");
@@ -13,45 +15,42 @@ int main(){
 	printf("\tEnter your choice: ");
 	scanf("%d", &input);
 	
-	switch(input){
-		case 1:
-			fcfs();
-			break;
-		case 2:
-			printf("\tSJF");
-			break;
-		case 3:
-			printf("\tPriority Based");
-			break;
-		case 4:
-			printf("\tRound Robin");
-			break;
-		default:
-			break;
-	}
-	printf("\n");
-	
-	return 0;
-}
-
-void fcfs(){
-	int processes;
-	float totalBurstT=0, totalWaitingT=0;
-	
 	printf("\tHow many processes?: ");
 	scanf("%d", &processes);
-	printf("\n\tEnter the values (Arrival Time and Burst Time)\n");
 	
 	int arr[processes][3];
+	printf("\n\tEnter the values (Arrival Time and Burst Time)\n");
     for (int i = 0; i < processes; i++) {
         printf("\tEnter the values for process %d: ", i);
         scanf("%d %d", &arr[i][0], &arr[i][1]);
         arr[i][2] = i;
     }
 	
-	// sort to find the process that arrived first
-    sortArray(arr, processes);
- 	
+	switch(input){
+		case 1:	
+			fcfs(arr, processes);
+			break;
+		case 2:
+			sjf(arr, processes);
+			break;
+		case 3:
+			printf("\tPriority Based");
+			break;
+		case 4:
+			// roundrobin();
+			break;
+		default: 
+			break;
+	}
+	printf("\n");
+	return 0;
+}
+
+void fcfs(int arr[][3], int processes){
+	float totalBurstT=0, totalWaitingT=0;
+	
+	sortArray(arr, processes, 0);
+	 	
 	// printing the process number
 	printf("\n\tGANTT CHART\n");
 	for(int i = 0; i < processes; i++){
@@ -76,7 +75,7 @@ void fcfs(){
 			// gets totalBurstT
 			totalBurstT += (sum - arr[i-1][0]);
 			
-			//gets the totalWaitingT
+			// gets totalWaitingT
 			if(i < processes){
 				totalWaitingT += sum;
 			}
@@ -85,22 +84,28 @@ void fcfs(){
 	
 	// printf("\n\ntotal waiting time: %f", totalWaitingT);
 	// printf("\n\ntotal burst time: %f", totalBurstT);
-	printf("\n\n\t ** Average Turn Around Time: %f **",((totalBurstT/processes)));
+	printf("\n\n\t ** Average Turn Around Time: 	%f **",((totalBurstT/processes)));
 	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/processes);
-	
 }
 
-void sortArray(int arr[][3], int rows) {
+void sortArray(int arr[][3], int rows, int time) {
     int i, j, temp;
     for (i = 0; i < rows - 1; i++) {
         for (j = i + 1; j < rows; j++) {
-            if (arr[j][0] < arr[i][0]) {
+			
+			// check if arrival time right is less than arrival time left
+            if (arr[j][time] < arr[i][time]) {
+				// swap arrival times
                 temp = arr[i][0];
                 arr[i][0] = arr[j][0];
                 arr[j][0] = temp;
+				
+				// swap burst times
                 temp = arr[i][1];
                 arr[i][1] = arr[j][1];
                 arr[j][1] = temp;
+				
+				// swap process number
                 temp = arr[i][2];
                 arr[i][2] = arr[j][2];
                 arr[j][2] = temp;
@@ -109,5 +114,19 @@ void sortArray(int arr[][3], int rows) {
     }
 }
 
-
-
+void sjf(int arr[][3], int processes){
+	// check if all arrival times are equal
+	for (int i = 0; i < processes - 1; i++) {
+		for (int j = i + 1; j < processes; j++) {
+			
+			// if at least one AT is different from other ATs
+			if (arr[j][0] != arr[i][0]){
+				fcfs(arr, processes);
+				return;
+			}
+        }
+    }
+	// if all processes arrived at the same time, sort by BT
+	sortArray(arr, processes, 1);
+	fcfs(arr, processes);
+}
