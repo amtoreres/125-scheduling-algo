@@ -7,11 +7,12 @@
 #define PROCESS_NUM 2
 #define PRIORITY 3
 
-void fcfs(int row);
-void sjf(int row);
-void priorityBased(int row);
+void fcfs(int);
+void sjf(int);
+void priorityBased(int);
 void getValue(int row, int col, int [row][col], int);
 void sortArray(int row, int col, int [row][col], int, int);
+void showChart(int row, int col, int [row][col]);
 
 int main(){
 	int choice;
@@ -48,55 +49,20 @@ int main(){
 }
 
 void fcfs(int row){
-	int col = 3, choice = 1, sortBy = ARRIVAL_T, serviceTime = 0;
-	float totalWaitingT=0, totalTAT = 0;
+	int col = 3, choice = 1, sortBy = ARRIVAL_T;
 	
 	int (*arr)[col];
 	arr = malloc(row * sizeof(*arr));
 
 	getValue(row, col, arr, choice);
 	sortArray(row, col, arr, sortBy, choice);
-	 	
-	// print the process numbers
-	printf("\n\tGANTT CHART\n");
-	for(int i = 0; i < row; i++){
-		if (i == 0){
-			printf("\t\tP%d", arr[i][2]);
-		}
-		else{
-			printf("\tP%d", arr[i][2]);
-		}
-	}
+	showChart(row, col, arr); 	
 	
-	// print the values
-	for(int i = 0; i <= row; i++){
-		if(i == 0){
-			printf("\n\t\t%d", arr[0][0]);
-		}
-		else{ 
-			serviceTime += arr[i-1][1];
-			printf("\t%d", serviceTime);
-
-			// Completion time - Arrival Time
-			totalTAT += serviceTime - arr[i-1][0]; 
-
-			if(i != 1){
-				// Completion time - Arrival time - Burst time
-				totalWaitingT += serviceTime - arr[i-1][0] - arr[i-1][1];	
-			}
-		}
-	}
-	
-	// printf("\n\ntotal waiting time: %f", totalWaitingT);
-	// printf("\n\ntotal burst time: %f", totalBurstT);
-	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
-	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
 	free(arr);
 }
 
 void sjf(int row){	
 	int col = 3, choice = 2, serviceTime = 0, index = 0, count;
-	float totalWaitingT=0, totalTAT = 0;
 	
 	int (*rawArr)[col];
 	int (*sortedArr)[col];
@@ -117,14 +83,8 @@ void sjf(int row){
     }
 	// if all processes arrived at the same time, sort by BT
 	sortArray(row, col, rawArr, BURST_T, choice);
-	
-	// copy rawArr to sortedArr
-	for (int i = 0; i < row; i++) {
-        for (int j = 0; j < col; j++) {
-            sortedArr[i][j] = rawArr[i][j];
-        }
-	}
-	goto output;
+	showChart(row, col, rawArr);
+	goto end;
 	
 	next:
 		// add first process to new multidimensional array 
@@ -173,51 +133,17 @@ void sjf(int row){
 			serviceTime += tempArr[0][1];
 			free(tempArr);
 		}
+
+		showChart(row, col, sortedArr);
 	
-
-	output:
-		serviceTime = 0;
-		
-		// print the process numbers
-		printf("\n\tGANTT CHART\n");
-		for(int i = 0; i < row; i++){
-			if (i == 0){
-				printf("\t\tP%d", sortedArr[i][2]);
-			}
-			else{
-				printf("\tP%d", sortedArr[i][2]);
-			}
-		}
-		
-		// print the values
-		for(int i = 0; i <= row; i++){
-			if(i == 0){
-				printf("\n\t\t%d", sortedArr[0][0]);
-			}
-			else{ 
-				serviceTime += sortedArr[i-1][1];
-				printf("\t%d", serviceTime);
-
-				// Completion time - Arrival Time
-				totalTAT += serviceTime - sortedArr[i-1][0]; 
-
-				if(i != 1){
-					// Completion time - Arrival time - Burst time
-					totalWaitingT += serviceTime - sortedArr[i-1][0] - sortedArr[i-1][1];	
-				}
-			}
-		}
-		
-		printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
-		printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
+	end:
 		free(rawArr);
 		free(sortedArr);
 }
 
 void priorityBased(int row){
 	int col = 4, choice = 3, serviceTime = 0, index = 0, count;
-	float totalWaitingT=0, totalTAT = 0;
-	
+
 	int (*rawArr)[col];
 	int (*sortedArr)[col];
 	rawArr = malloc(row * sizeof(*rawArr));
@@ -237,14 +163,8 @@ void priorityBased(int row){
     }
 	// if all processes arrived at the same time, sort by BT
 	sortArray(row, col, rawArr, PRIORITY, choice);
-	
-	// copy rawArr to sortedArr
-	for (int i = 0; i < row; i++) {
-        for (int j = 0; j < col; j++) {
-            sortedArr[i][j] = rawArr[i][j];
-        }
-	}	
-	goto output;
+	showChart(row, col, rawArr);
+	goto end;
 	
 	next:
 		// add first process to new multidimensional array 
@@ -256,7 +176,6 @@ void priorityBased(int row){
 		rawArr[0][0] = -1;
 		serviceTime += sortedArr[0][1];
 		count = row - 1;
-
 
 		while(count != 0){
 			int step = 0;
@@ -273,7 +192,6 @@ void priorityBased(int row){
 					step++;
 				}
 			}
-
 
 			// sort tempArr by priority
 			sortArray(step, col, tempArr, PRIORITY, choice);
@@ -297,42 +215,8 @@ void priorityBased(int row){
 			free(tempArr);
 		}
 	
-
-	output:
-		serviceTime = 0;
-		
-		// print the process numbers
-		printf("\n\tGANTT CHART\n");
-		for(int i = 0; i < row; i++){
-			if (i == 0){
-				printf("\t\tP%d", sortedArr[i][2]);
-			}
-			else{
-				printf("\tP%d", sortedArr[i][2]);
-			}
-		}
-		
-		// print the values
-		for(int i = 0; i <= row; i++){
-			if(i == 0){
-				printf("\n\t\t%d", sortedArr[0][0]);
-			}
-			else{ 
-				serviceTime += sortedArr[i-1][1];
-				printf("\t%d", serviceTime);
-
-				// Completion time - Arrival Time
-				totalTAT += serviceTime - sortedArr[i-1][0]; 
-
-				if(i != 1){
-					// Completion time - Arrival time - Burst time
-					totalWaitingT += serviceTime - sortedArr[i-1][0] - sortedArr[i-1][1];	
-				}
-			}
-		}
-		
-		printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
-		printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
+		showChart(row, col, sortedArr);
+	end:
 		free(rawArr);
 		free(sortedArr);
 }
@@ -387,4 +271,44 @@ void getValue(int row, int col, int arr[row][col], int choice){
 			arr[i][2] = i;
 		}
 	}
+}
+
+void showChart(int row, int col, int arr[row][col]){
+	int serviceTime = 0;
+	float totalTAT = 0, totalWaitingT = 0;
+	
+	// print the process numbers
+	printf("\n\tGANTT CHART\n");
+	for(int i = 0; i < row; i++){
+		if (i == 0){
+			printf("\t\tP%d", arr[i][2]);
+		}
+		else{
+			printf("\tP%d", arr[i][2]);
+		}
+	}
+
+	// print the values
+	for(int i = 0; i <= row; i++){
+		if(i == 0){
+			printf("\n\t\t%d", arr[0][0]);
+		}
+		else{ 
+			serviceTime += arr[i-1][1];
+			printf("\t%d", serviceTime);
+
+			// Completion time - Arrival Time
+			totalTAT += serviceTime - arr[i-1][0]; 
+
+			if(i != 1){
+				// Completion time - Arrival time - Burst time
+				totalWaitingT += serviceTime - arr[i-1][0] - arr[i-1][1];	
+			}
+		}
+	}
+	
+	// printf("\n\ntotal waiting time: %f", totalWaitingT);
+	// printf("\n\ntotal burst time: %f", totalBurstT);
+	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
+	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
 }
