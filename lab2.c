@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <stdbool.h>
 
 #define ARRIVAL_T 0
@@ -14,8 +13,7 @@ void priorityBased(int);
 void roundRobin(int);
 void getValue(int row, int col, int [row][col], int);
 void sortArray(int row, int col, int [row][col], int, int);
-void showChart(int row, int col, int [row][col]);
-void shift(int [], int);
+void shift(int row, int col, int [row][col], int);
 
 int main(){
 	int choice;
@@ -51,329 +49,374 @@ int main(){
 		}
 		printf("\n\n\tWould you like to continue? 1/0: ");
 		scanf("%d", &isContinue);
-		printf("\n\t***********************************************************\n");
+		printf("\n\t**********************************************************\n\n");
 	}
 }
 
 void fcfs(int row){
-	int col = 3, choice = 1, sortBy = ARRIVAL_T;
+	int col = 3, choice = 1;
+	
+	int serviceTime = 0;
+	float totalTAT = 0, totalWT = 0;
+
+	int (*arr)[col];
+	arr = malloc(row * sizeof(*arr));
+
+	getValue(row, col, arr, choice);
+	sortArray(row, col, arr, ARRIVAL_T, choice);
+
+	printf("\n\tGANTT CHART");
+	if (arr[0][0] != 0){
+		printf("\n\t0 [IDLE] %d", arr[0][0]);
+		serviceTime+=arr[0][0];
+	}
+	else{
+		printf("\n\t%d", arr[0][0]);
+	}
+
+	for(int i = 0; i < row; i++){
+		// if next process already arrived
+		if (arr[i][0] <= serviceTime){
+			serviceTime += arr[i][1];
+			printf(" [P%d] %d", arr[i][2], serviceTime);
+			totalTAT += serviceTime - arr[i][0];
+			totalWT += serviceTime - arr[i][1] - arr[i][0];
+		}
+		else{
+			printf(" [IDLE] %d", arr[i][0]);
+			serviceTime=arr[i][0];
+			i--;
+		}
+	}
+
+	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
+	printf("\n\t ** Average Waiting Time: %f **",totalWT/row);
+	free(arr);
+}
+	
+void sjf(int row){	
+	int col = 3, choice = 2, serviceTime = 0;
+	float totalTAT = 0, totalWT = 0;
 	
 	int (*arr)[col];
 	arr = malloc(row * sizeof(*arr));
 
 	getValue(row, col, arr, choice);
-	sortArray(row, col, arr, sortBy, choice);
-	showChart(row, col, arr); 	
-	
-	free(arr);
-	}
-	
-
-
-void sjf(int row){	
-	int col = 3, choice = 2, serviceTime = 0, index = 0, count;
-	
-	int (*rawArr)[col];
-	int (*sortedArr)[col];
-	rawArr = malloc(row * sizeof(*rawArr));
-	sortedArr = malloc(row * sizeof(*sortedArr));
-
-	getValue(row, col, rawArr, choice);
 	
 	// check if processes arrived at the same time
 	for (int i = 0; i < row - 1; i++) {
 		for (int j = i + 1; j < row; j++) {
 			// if at least one process arrived at a different time, sort by AT
-			if (rawArr[j][0] != rawArr[i][0]){
-				sortArray(row, col, rawArr, ARRIVAL_T, choice);
+			if (arr[j][0] != arr[i][0]){
+				sortArray(row, col, arr, ARRIVAL_T, choice);
 				goto next;
 			}
         }
+		break;
     }
-	// if all processes arrived at the same time, sort by BT
-	sortArray(row, col, rawArr, BURST_T, choice);
-	showChart(row, col, rawArr);
-	goto end;
 	
+	// if all processes arrived at the same time, sort by BT
+	sortArray(row, col, arr, BURST_T, choice);
+	
+	printf("\n\tGANTT CHART");
+	if (arr[0][0] != 0){
+		printf("\n\t0 [IDLE] %d", arr[0][0]);
+		serviceTime+=arr[0][0];
+	}
+	else{
+		printf("\n\t0");
+	}
+
+	for(int i = 0; i < row; i++){
+		serviceTime+=arr[i][1];
+		printf(" [P%d] %d", arr[i][2], serviceTime);
+		totalTAT += serviceTime - arr[i][0];
+		totalWT += serviceTime - arr[i][1] - arr[i][0];
+	}
+	
+	goto end;
+
 	next:
-		// add first process to new multidimensional array 
-		for(int i = 0; i < col; i++){
-			sortedArr[index][i] = rawArr[index][i];
+		int shortestBT;
+		int shortestBurstIndex;
+
+		printf("\tGANTT CHART");
+		if (arr[0][0] != 0){
+			printf("\n\t0 [IDLE] %d", arr[0][0]);
+			serviceTime+=arr[0][0];
 		}
-
-		index++;
-		rawArr[0][0] = -1;
-		serviceTime += sortedArr[0][1];
-		count = row - 1;
-
-		while(count != 0){
-			int step = 0;
-			int (*tempArr)[col];
-			tempArr = malloc(row * sizeof(*tempArr));
-
+		else{
+			printf("\n\t0");
+		}
+		
+		for(int k = 0; k < row; k++){
+			shortestBT = -1;
+			shortestBurstIndex = -1;
 			for (int i = 0; i < row; i++) {
-				// if row's AT is <= to service time and not equal to -1, copy to tempArr
-				if ((rawArr[i][0] <= serviceTime) && (rawArr[i][0] != -1)) {
-					tempArr[step][0] = rawArr[i][0];
-					tempArr[step][1] = rawArr[i][1];
-					tempArr[step][2] = rawArr[i][2];
-					step++;
+				// check if AT is less than or equal to certain value
+				if (arr[i][0] <= serviceTime && arr[i][2] != -1) {
+					// check if lowest BT value is -1 or current row's BT is lower
+					if (shortestBT == -1 || arr[i][1] < shortestBT) {
+						// update lowest BT value and row index
+						shortestBT = arr[i][1];
+						shortestBurstIndex = i;	
+					}
 				}
 			}
 		
-			// sort tempArr by BT
-			sortArray(step, col, tempArr, BURST_T, choice);
-			
-			// copy the process with shotest BT in tempArr to sortedArr
-			for(int i = 0; i < col; i++){
-				sortedArr[index][i] = tempArr[0][i];
-			}
-
-			// find the first row in tempArr in rawArr and change AT to -1
-			for (int i = 0; i < row; i++) {
-				if (rawArr[i][0] == tempArr[0][0] && rawArr[i][1] == tempArr[0][1] && rawArr[i][2] == tempArr[0][2]) {
-					rawArr[i][0] = -1;
-					break;
+			// idle time detected
+			if (shortestBurstIndex == -1){
+				for(int i = 0; i < row; i++){
+					if (arr[i][0] > serviceTime){
+						shortestBurstIndex = i;
+						break;
+					}	
 				}
+
+				printf(" [IDLE] %d", arr[shortestBurstIndex][0]);
+				serviceTime = arr[shortestBurstIndex][0];
+				k--;
+				continue;
 			}
 			
-			index++;
-			count--;
-			serviceTime += tempArr[0][1];
-			free(tempArr);
-		}
-
-		showChart(row, col, sortedArr);
-	
+			serviceTime += arr[shortestBurstIndex][1];
+			printf(" [P%d] %d", arr[shortestBurstIndex][2], serviceTime);
+			arr[shortestBurstIndex][2] = -1;
+			totalTAT += serviceTime - arr[shortestBurstIndex][0];
+			totalWT += serviceTime - arr[shortestBurstIndex][1] - arr[shortestBurstIndex][0];
+		} // end of outer for loop
+			
 	end:
-		free(rawArr);
-		free(sortedArr);
+		printf("\n\n\t ** Average Turn Around Time: %f **",(totalTAT/row));
+		printf("\n\t ** Average Waiting Time: %f **",totalWT/row);
+		free(arr);
 }
 
 void priorityBased(int row){
-	int col = 4, choice = 3, serviceTime = 0, index = 0, count;
+	int col = 4, choice = 3, serviceTime = 0;
+	float totalTAT = 0, totalWT = 0;
 
-	int (*rawArr)[col];
-	int (*sortedArr)[col];
-	rawArr = malloc(row * sizeof(*rawArr));
-	sortedArr = malloc(row * sizeof(*sortedArr));
-
-	getValue(row, col, rawArr, choice);
+	int (*arr)[col];
+	arr = malloc(row * sizeof(*arr));
+	
+	getValue(row, col, arr, choice);
 	
 	// check if processes arrived at the same time
 	for (int i = 0; i < row - 1; i++) {
 		for (int j = i + 1; j < row; j++) {
 			// if at least one process arrived at a different time, sort by AT
-			if (rawArr[j][0] != rawArr[i][0]){
-				sortArray(row, col, rawArr, ARRIVAL_T, choice);
+			if (arr[j][0] != arr[i][0]){
+				sortArray(row, col, arr, ARRIVAL_T, choice);
 				goto next;
 			}
         }
     }
-	// if all processes arrived at the same time, sort by BT
-	sortArray(row, col, rawArr, PRIORITY, choice);
-	showChart(row, col, rawArr);
+	// if all processes arrived at the same time, sort by Priority
+	sortArray(row, col, arr, PRIORITY, choice);
+
+	printf("\n\tGANTT CHART");
+	if (arr[0][0] != 0){
+		printf("\n\t0 [IDLE] %d", arr[0][0]);
+		serviceTime+=arr[0][0];
+	}
+	else{
+		printf("\n\t0");
+	}
+
+	for(int i = 0; i < row; i++){
+		serviceTime+=arr[i][1];
+		printf(" [P%d] %d", arr[i][2], serviceTime);
+		totalTAT += serviceTime - arr[i][0];
+		totalWT += serviceTime - arr[i][1] - arr[i][0];
+	}
+
 	goto end;
-	
+
 	next:
-		// add first process to new multidimensional array 
-		for(int i = 0; i < col; i++){
-			sortedArr[index][i] = rawArr[index][i];
+		int highestPrio = -1;
+		int highestPrioIndex = -1;
+
+		printf("\n\tGANTT CHART");
+		if (arr[0][0] != 0){
+			printf("\n\t0 [IDLE] %d", arr[0][0]);
+			serviceTime+=arr[0][0];
 		}
-
-		index++;
-		rawArr[0][0] = -1;
-		serviceTime += sortedArr[0][1];
-		count = row - 1;
-
-		while(count != 0){
-			int step = 0;
-			int (*tempArr)[col];
-			tempArr = malloc(row * sizeof(*tempArr));
-
+		else{
+			printf("\n\t0");
+		}
+		
+		for(int k = 0; k < row; k++){
+			highestPrio = -1;
+			highestPrioIndex = -1;
 			for (int i = 0; i < row; i++) {
-				// if row's AT is <= to service time and not equal to -1, copy to tempArr
-				if ((rawArr[i][0] <= serviceTime) && (rawArr[i][0] != -1)) {
-					tempArr[step][0] = rawArr[i][0];
-					tempArr[step][1] = rawArr[i][1];
-					tempArr[step][2] = rawArr[i][2];
-					tempArr[step][3] = rawArr[i][3];
-					step++;
+				// check if AT is less than or equal to certain value
+				if (arr[i][0] <= serviceTime && arr[i][2] != -1) {
+					// check if lowest prio is -1 or current row's prio is lower
+					if (highestPrio == -1 || arr[i][3] < highestPrio) {
+						// update lowest BT value and row index
+						highestPrio = arr[i][3];
+						highestPrioIndex = i;	
+					}
 				}
-			}
-
-			// sort tempArr by priority
-			sortArray(step, col, tempArr, PRIORITY, choice);
-
-			// copy the process with highest priority in tempArr to sortedArr
-			for(int i = 0; i < col; i++){
-				sortedArr[index][i] = tempArr[0][i];
 			}
 		
-			// find the first row in tempArr in rawArr and change AT to -1
-			for (int i = 0; i < row; i++) {
-				if (rawArr[i][0] == tempArr[0][0] && rawArr[i][1] == tempArr[0][1] && rawArr[i][2] == tempArr[0][2]) {
-					rawArr[i][0] = -1;
-					break;
+			// idle time detected
+			if (highestPrioIndex == -1){
+				for(int i = 0; i < row; i++){
+					if (arr[i][0] > serviceTime){
+						highestPrioIndex = i;
+						break;
+					}	
 				}
+
+				printf(" [IDLE] %d", arr[highestPrioIndex][0]);
+				serviceTime = arr[highestPrioIndex][0];
+				k--;
+				continue;
 			}
 			
-			index++;
-			count--;
-			serviceTime += tempArr[0][1];
-			free(tempArr);
-		}
-	
-		showChart(row, col, sortedArr);
-	
-	end:
-		free(rawArr);
-		free(sortedArr);
+			serviceTime += arr[highestPrioIndex][1];
+			printf(" [P%d] %d", arr[highestPrioIndex][2], serviceTime);
+			arr[highestPrioIndex][2] = -1;
+			totalTAT += serviceTime - arr[highestPrioIndex][0];
+			totalWT += serviceTime - arr[highestPrioIndex][1] - arr[highestPrioIndex][0];
+		} // end of outer for loop
+		
+		end:
+			printf("\n\n\t ** Average Turn Around Time: %f **",(totalTAT/row));
+			printf("\n\t ** Average Waiting Time: %f **",totalWT/row);
+			free(arr);
 }
-
-//	0,	1,	2,	3, 4
-// AT, BT, PN, RT, added or not
+	
 void roundRobin(int row){
-	int col = 5, choice = 4, serviceTime = 0, index = 0, timeQuantum, sortedLen = 0, mark = 0;
-	bool flag = false;
+	int col = 4, choice = 4, serviceTime = 0, len = 0, timeQuantum;
 	float totalTAT = 0, totalWT = 0;
-	int temp_index = 0;
-	int (*rawArr)[col];
-	int tempArr[row];
-	int (*sortedArr)[2];
-
-	rawArr = malloc(row * sizeof(*rawArr));
-	sortedArr = malloc(row * sizeof(*sortedArr));
-
+	bool firstFlag, secondFlag;
+	
+	int (*arr)[col];
+	int (*queue)[col];	
+	arr = malloc(row * sizeof(*arr));
+	queue = malloc(row * sizeof(*queue));
 
 	printf("\tEnter your time quantum: ");
 	scanf("%d", &timeQuantum);
 
-	getValue(row, col, rawArr, choice);
-	sortArray(row, col, rawArr, ARRIVAL_T, choice);
+	getValue(row, col, arr, choice);
+	sortArray(row, col, arr, ARRIVAL_T, choice);
 
-	// get the final length of the gantt chart
-	for(int i = 0; i < row; i++){
-		sortedLen += (int) ceil((float)rawArr[i][1]/timeQuantum);
+	// put to the first process to queue arr
+	for (int i = 0; i < col; i++) {
+			queue[0][i] = arr[0][i];
+	}
+	arr[0][0] = -1;
+	len++;
+
+	printf("\n\tGANTT CHART");
+	if (queue[0][0] != 0){
+		printf("\n\t0 [IDLE] %d", queue[0][0]);
+		serviceTime+=queue[0][0];
+	}
+	else{
+		printf("\n\t0");
 	}
 
-	//	0,	1
-	// PN, ST
-	sortedArr = malloc(sortedLen * sizeof(*sortedArr));
-
-	// serviceTime = rawArr[0][0];
 	while (true){
-		// copy the PN of marked row in rawArr and the service tiem to sortedArr
-		sortedArr[index][0] = rawArr[mark][2];
-		sortedArr[index][1] = serviceTime;
-
-		// check if remaining time is greater than or equal to time quantum
-		if(rawArr[mark][3] >= timeQuantum){
-			// if yes, decrement remaining by TQ
-			rawArr[mark][3] -= timeQuantum;
-			// increment service time by TQ
+		// if RT >= TQ
+		if(queue[0][3] >= timeQuantum){
+			queue[0][3] -= timeQuantum;
 			serviceTime += timeQuantum;
+			printf(" [P%d] %d", queue[0][2], serviceTime);	
+			
+			if(queue[0][3] == 0){
+				totalTAT += serviceTime - queue[0][0];
+				totalWT += serviceTime - queue[0][1] - queue[0][0];
+			}	
+		}
+		// if RT < TQ
+		else{
+			serviceTime += queue[0][3];	
+			queue[0][3] = 0;
+			totalTAT += serviceTime - queue[0][0];
+			totalWT += serviceTime - queue[0][1] - queue[0][0];
+			printf(" [P%d] %d", queue[0][2], serviceTime);	
+		}
 
-			// if remaining time is equal to 0
-			if (rawArr[mark][3] == 0){
-				// mark the AT of the row
-				totalTAT += serviceTime - rawArr[mark][0];
-				totalWT += serviceTime - rawArr[mark][1] - rawArr[mark][0];
-				rawArr[mark][0] = -1;
-				
-
-				// mark the finished process in tempArr
-				for(int i = 0; i < temp_index; i++){
-					if(tempArr[i] == mark){
-						tempArr[i] = -1;
-					}
-				}	
+		// add processes to queue
+		for(int i = 0; i < row; i++){
+			if(arr[i][0] <= serviceTime && arr[i][0] != -1){
+				for(int j = 0; j < col; j++){
+					queue[len][j] = arr[i][j];
+				}
+				// mark the arrival time to -1 if process is added to queue
+				arr[i][0] = -1;	
+				len++;
 			}
 		}
 
-		// if remaining time is less than TQ
-		else{
-			// add the remaining time to service time
-			serviceTime += rawArr[mark][3];
+		// checks if all queued processes are done
+		for(int i = 0; i < len; i++){
+			if(queue[i][3] == 0){
+				firstFlag = true;
+			}
+			else{
+				firstFlag = false;
+				break;
+			}
+		}
 
-			totalTAT += serviceTime - rawArr[mark][0];
-			totalWT += serviceTime - rawArr[mark][1] - rawArr[mark][0];
-			
-			// mark the AT of the row
-			rawArr[mark][0] = -1;
-			rawArr[mark][3] = 0;
+		// checks if all processes are added to the queue
+		for(int i = 0; i < row; i++){
+			if(arr[i][0] == -1){
+				secondFlag = true;
+			}
+			else{
+				secondFlag = false;
+				break;
+			}
+		}
 
-			// mark the finished process in tempArr
-			for(int i = 0; i < temp_index; i++){
-				if(tempArr[i] == mark){
-					tempArr[i] = -1;
+		// if all processes in queue are done but there are unqueued processes => idle time
+		if(firstFlag == true && secondFlag == false){
+			for(int i = 0; i < row; i++){
+				if (arr[i][0] != -1){
+					printf(" [IDLE] %d",arr[i][0]);
+					serviceTime = arr[i][0];
+					for (int k = 0; k < col; k++) {
+						queue[len][k] = arr[i][k];
+					}
+					arr[i][0] = -1;
+					len++;
+					break;
 				}
 			}
 		}
 
-		for (int i = 0; i < row; i++) {
-			if (rawArr[i][0] <= serviceTime && rawArr[i][4] == 0) {
-				tempArr[temp_index] = rawArr[i][2];
-				rawArr[i][4] = 1;
-				temp_index++;
-			}
-		}
-
-		shift(tempArr, temp_index);
-
-		for (int i = 0; i < row; i++){
-			if(tempArr[i] != -1){
-				mark = tempArr[i];
-				break;
-			}
-		}
-
-	
-		index++;
-
-		// check if all ATs have been marked -1
-		for(int i = 0; i < row; i++){
-			if(rawArr[i][0] == -1){
-				flag = true;
-			}
-			else{
-				flag = false;
-				break;
-			}
-		}
-
-		if (flag == true){
+		// if all processes are queued and done
+		if(firstFlag == true && secondFlag == true){
 			break;
-		}	
-	} // end while
+		}
 
+		//shift until the RT of first process is not equal to zero
+		while (true){
+			shift(row, col, queue, len);
+			if(queue[0][3] != 0){
+				break;
+			}
+		}
+	} // end of while loop
 
-	printf("\n\tGANTT CHART\n");
-	for (int i = 0; i < sortedLen; i++){
-		printf("\tP%d", sortedArr[i][0]);
-	}
-	printf("\n");
-	for (int i = 0; i < sortedLen; i++){
-		printf("\t%d", sortedArr[i][1]);
-	}
-	printf("\t%d", serviceTime);
-
-	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
+	printf("\n\n\t ** Average Turn Around Time: %f **",(totalTAT/row));
 	printf("\n\t ** Average Waiting Time: %f **",totalWT/row);
-		
-	free(sortedArr);
-	free(rawArr);
-} // end round robin
-
-
+	
+	free(arr);
+	free(queue);
+}
 
 void sortArray(int row, int col, int arr[row][col], int time, int choice){
     int temp;
     for (int i = 0; i < row - 1; i++) {
         for (int j = i + 1; j < row; j++) {
-			
             if (arr[j][time] < arr[i][time]) {
-				
 				// swap arrival times
                 temp = arr[i][0];
                 arr[i][0] = arr[j][0];
@@ -417,55 +460,28 @@ void getValue(int row, int col, int arr[row][col], int choice){
 			arr[i][2] = i;
 			if (choice == 4){
 				arr[i][3] = arr[i][1];
-				arr[i][4] = 0;
 			}
 		}
 	}
 }
 
-void showChart(int row, int col, int arr[row][col]){
-	int serviceTime = 0;
-	float totalTAT = 0, totalWaitingT = 0;
-	
-	// print the process numbers
-	printf("\n\tGANTT CHART\n");
-	for(int i = 0; i < row; i++){
-		printf("\tP%d", arr[i][2]);
-	}
+void shift(int row, int col, int arr[row][col], int len) {
+    int temp[4];
 
-	// print the values
-	for(int i = 0; i <= row; i++){
-		if(i == 0){
-			printf("\n\t%d", arr[0][0]);
-		}
-		else{ 
-			serviceTime += arr[i-1][1];
-			printf("\t%d", serviceTime);
-
-			// Completion time - Arrival Time
-			totalTAT += serviceTime - arr[i-1][0]; 
-
-			if(i != 1){
-				// Completion time - Arrival time - Burst time
-				totalWaitingT += serviceTime - arr[i-1][0] - arr[i-1][1];	
-			}
-		}
-	}
-	
-	// printf("\n\ntotal waiting time: %f", totalWaitingT);
-	// printf("\n\ntotal burst time: %f", totalBurstT);
-	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
-	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
-}
-
-void shift(int arr[], int len){
-	int temp = arr[0];
-
-    // Shift elements to the left
-    for (int i = 0; i < len-1; i++) {
-        arr[i] = arr[i+1];
+    // Store the first row in temp
+    for (int j = 0; j < col; j++) {
+        temp[j] = arr[0][j];
     }
 
-    // Assign the temporary variable to the last element
-    arr[len-1] = temp;
+    // Shift rows to the top
+	for (int i = 0; i < len; i++) {
+        for (int j = 0; j < 4; j++) {
+            arr[i][j] = arr[i+1][j];
+        }
+    }
+
+    // Assign the temporary variable to the last row
+    for (int j = 0; j < col; j++) {
+        arr[len-1][j] = temp[j];
+    }
 }
