@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <math.h>
+#include <stdbool.h>
 
 #define ARRIVAL_T 0
 #define BURST_T 1
@@ -10,42 +11,48 @@
 void fcfs(int);
 void sjf(int);
 void priorityBased(int);
+void roundRobin(int);
 void getValue(int row, int col, int [row][col], int);
 void sortArray(int row, int col, int [row][col], int, int);
 void showChart(int row, int col, int [row][col]);
+void shift(int [], int);
 
 int main(){
 	int choice;
 	int processes;
-	
-	printf("\t----  Scheduling Algorithms ----\n");
-	printf("\t1. FCFS\n\t2. SJF\n\t3. Priority Based\n\t4. Round Robin\n\t5. Exit\n");
-	
-	printf("\tEnter your choice: ");
-	scanf("%d", &choice);
-	if(choice > 5 || choice < 1){return 0;}
-	
-	printf("\tHow many processes?: ");
-	scanf("%d", &processes);
-	
-	switch(choice){
-	case 1:	
-		fcfs(processes);
-		break;
-	case 2:
-		sjf(processes);
-		break;
-	case 3:
-		priorityBased(processes);
-		break;
-	case 4:
-		printf("Round Robin");
-		break;
-	default: 
-		break;
+	int isContinue = 1;
+
+	while(isContinue){
+		printf("\t----  Scheduling Algorithms ----\n");
+		printf("\t1. FCFS\n\t2. SJF\n\t3. Priority Based\n\t4. Round Robin\n\t5. Exit\n");
+		
+		printf("\tEnter your choice: ");
+		scanf("%d", &choice);
+		if(choice > 5 || choice < 1){return 0;}
+		
+		printf("\tHow many processes?: ");
+		scanf("%d", &processes);
+		
+		switch(choice){
+		case 1:	
+			fcfs(processes);
+			break;
+		case 2:
+			sjf(processes);
+			break;
+		case 3:
+			priorityBased(processes);
+			break;
+		case 4:
+			roundRobin(processes);
+			break;
+		default: 
+			break;
+		}
+		printf("\n\n\tWould you like to continue? 1/0: ");
+		scanf("%d", &isContinue);
+		printf("\n\t***********************************************************\n");
 	}
-	printf("\n");
-	return 0;
 }
 
 void fcfs(int row){
@@ -59,7 +66,9 @@ void fcfs(int row){
 	showChart(row, col, arr); 	
 	
 	free(arr);
-}
+	}
+	
+
 
 void sjf(int row){	
 	int col = 3, choice = 2, serviceTime = 0, index = 0, count;
@@ -216,10 +225,147 @@ void priorityBased(int row){
 		}
 	
 		showChart(row, col, sortedArr);
+	
 	end:
 		free(rawArr);
 		free(sortedArr);
 }
+
+//	0,	1,	2,	3, 4
+// AT, BT, PN, RT, added or not
+void roundRobin(int row){
+	int col = 5, choice = 4, serviceTime = 0, index = 0, timeQuantum, sortedLen = 0, mark = 0;
+	bool flag = false;
+	float totalTAT = 0, totalWT = 0;
+	int temp_index = 0;
+	int (*rawArr)[col];
+	int tempArr[row];
+	int (*sortedArr)[2];
+
+	rawArr = malloc(row * sizeof(*rawArr));
+	sortedArr = malloc(row * sizeof(*sortedArr));
+
+
+	printf("\tEnter your time quantum: ");
+	scanf("%d", &timeQuantum);
+
+	getValue(row, col, rawArr, choice);
+	sortArray(row, col, rawArr, ARRIVAL_T, choice);
+
+	// get the final length of the gantt chart
+	for(int i = 0; i < row; i++){
+		sortedLen += (int) ceil((float)rawArr[i][1]/timeQuantum);
+	}
+
+	//	0,	1
+	// PN, ST
+	sortedArr = malloc(sortedLen * sizeof(*sortedArr));
+
+	// serviceTime = rawArr[0][0];
+	while (true){
+		// copy the PN of marked row in rawArr and the service tiem to sortedArr
+		sortedArr[index][0] = rawArr[mark][2];
+		sortedArr[index][1] = serviceTime;
+
+		// check if remaining time is greater than or equal to time quantum
+		if(rawArr[mark][3] >= timeQuantum){
+			// if yes, decrement remaining by TQ
+			rawArr[mark][3] -= timeQuantum;
+			// increment service time by TQ
+			serviceTime += timeQuantum;
+
+			// if remaining time is equal to 0
+			if (rawArr[mark][3] == 0){
+				// mark the AT of the row
+				totalTAT += serviceTime - rawArr[mark][0];
+				totalWT += serviceTime - rawArr[mark][1] - rawArr[mark][0];
+				rawArr[mark][0] = -1;
+				
+
+				// mark the finished process in tempArr
+				for(int i = 0; i < temp_index; i++){
+					if(tempArr[i] == mark){
+						tempArr[i] = -1;
+					}
+				}	
+			}
+		}
+
+		// if remaining time is less than TQ
+		else{
+			// add the remaining time to service time
+			serviceTime += rawArr[mark][3];
+
+			totalTAT += serviceTime - rawArr[mark][0];
+			totalWT += serviceTime - rawArr[mark][1] - rawArr[mark][0];
+			
+			// mark the AT of the row
+			rawArr[mark][0] = -1;
+			rawArr[mark][3] = 0;
+
+			// mark the finished process in tempArr
+			for(int i = 0; i < temp_index; i++){
+				if(tempArr[i] == mark){
+					tempArr[i] = -1;
+				}
+			}
+		}
+
+		for (int i = 0; i < row; i++) {
+			if (rawArr[i][0] <= serviceTime && rawArr[i][4] == 0) {
+				tempArr[temp_index] = rawArr[i][2];
+				rawArr[i][4] = 1;
+				temp_index++;
+			}
+		}
+
+		shift(tempArr, temp_index);
+
+		for (int i = 0; i < row; i++){
+			if(tempArr[i] != -1){
+				mark = tempArr[i];
+				break;
+			}
+		}
+
+	
+		index++;
+
+		// check if all ATs have been marked -1
+		for(int i = 0; i < row; i++){
+			if(rawArr[i][0] == -1){
+				flag = true;
+			}
+			else{
+				flag = false;
+				break;
+			}
+		}
+
+		if (flag == true){
+			break;
+		}	
+	} // end while
+
+
+	printf("\n\tGANTT CHART\n");
+	for (int i = 0; i < sortedLen; i++){
+		printf("\tP%d", sortedArr[i][0]);
+	}
+	printf("\n");
+	for (int i = 0; i < sortedLen; i++){
+		printf("\t%d", sortedArr[i][1]);
+	}
+	printf("\t%d", serviceTime);
+
+	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
+	printf("\n\t ** Average Waiting Time: %f **",totalWT/row);
+		
+	free(sortedArr);
+	free(rawArr);
+} // end round robin
+
+
 
 void sortArray(int row, int col, int arr[row][col], int time, int choice){
     int temp;
@@ -267,8 +413,12 @@ void getValue(int row, int col, int arr[row][col], int choice){
 		printf("\n\tEnter the values (Arrival Time and Burst Time)\n");
 		for (int i = 0; i < row; i++) {
 			printf("\tEnter the values for process %d: ", i);
-			scanf("%d %d", &arr[i][0], &arr[i][1]);
+			scanf("%d %d", &arr[i][0], &arr[i][1]); 
 			arr[i][2] = i;
+			if (choice == 4){
+				arr[i][3] = arr[i][1];
+				arr[i][4] = 0;
+			}
 		}
 	}
 }
@@ -280,18 +430,13 @@ void showChart(int row, int col, int arr[row][col]){
 	// print the process numbers
 	printf("\n\tGANTT CHART\n");
 	for(int i = 0; i < row; i++){
-		if (i == 0){
-			printf("\t\tP%d", arr[i][2]);
-		}
-		else{
-			printf("\tP%d", arr[i][2]);
-		}
+		printf("\tP%d", arr[i][2]);
 	}
 
 	// print the values
 	for(int i = 0; i <= row; i++){
 		if(i == 0){
-			printf("\n\t\t%d", arr[0][0]);
+			printf("\n\t%d", arr[0][0]);
 		}
 		else{ 
 			serviceTime += arr[i-1][1];
@@ -311,4 +456,16 @@ void showChart(int row, int col, int arr[row][col]){
 	// printf("\n\ntotal burst time: %f", totalBurstT);
 	printf("\n\n\t ** Average Turn Around Time: 	%f **",(totalTAT/row));
 	printf("\n\t ** Average Waiting Time: %f **",totalWaitingT/row);
+}
+
+void shift(int arr[], int len){
+	int temp = arr[0];
+
+    // Shift elements to the left
+    for (int i = 0; i < len-1; i++) {
+        arr[i] = arr[i+1];
+    }
+
+    // Assign the temporary variable to the last element
+    arr[len-1] = temp;
 }
